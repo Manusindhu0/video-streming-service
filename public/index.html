@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StreamHub - Video Streaming Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #f1f1f1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- NAVBAR -->
+  <header class="sticky top-0 z-40 bg-[#0f0f0f]/95 backdrop-blur border-b border-[#222] px-4 py-2.5 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white text-xl shadow-lg shadow-red-600/30">
+        <i class="fa-solid fa-play ml-0.5"></i>
+      </div>
+      <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-red-500 to-amber-500 bg-clip-text text-transparent">StreamHub</span>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="flex-1 max-w-xl hidden sm:flex items-center">
+      <div class="relative w-full">
+        <input id="searchInput" type="text" placeholder="Search videos or tags..." 
+          class="w-full bg-[#121212] border border-[#303030] rounded-full py-2 pl-4 pr-10 text-sm focus:outline-none focus:border-red-500 text-gray-200">
+        <button onclick="handleSearch()" class="absolute right-3 top-2.5 text-gray-400 hover:text-white">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2">
+      <button onclick="openUploadModal()" class="flex items-center gap-2 bg-[#222] hover:bg-[#2e2e2e] text-white px-3.5 py-1.5 rounded-full text-sm font-medium border border-[#333] transition">
+        <i class="fa-solid fa-cloud-arrow-up text-red-500"></i>
+        <span class="hidden md:inline">Upload</span>
+      </button>
+
+      <div id="authSection">
+        <button onclick="openAuthModal('login')" class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-full text-sm font-medium transition shadow-md shadow-red-600/30">
+          <i class="fa-regular fa-user"></i>
+          <span>Sign In</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CATEGORY PILLS -->
+  <div class="px-6 py-3 border-b border-[#1c1c1c] flex items-center gap-2 overflow-x-auto custom-scrollbar text-sm">
+    <button onclick="filterCategory('')" class="category-btn active px-3.5 py-1.5 rounded-lg bg-white text-black font-semibold whitespace-nowrap">All</button>
+    <button onclick="filterCategory('Tech')" class="category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap">Tech</button>
+    <button onclick="filterCategory('Gaming')" class="category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap">Gaming</button>
+    <button onclick="filterCategory('Music')" class="category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap">Music</button>
+    <button onclick="filterCategory('Education')" class="category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap">Education</button>
+    <button onclick="filterCategory('Entertainment')" class="category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap">Entertainment</button>
+  </div>
+
+  <!-- MAIN VIDEO FEED -->
+  <main class="flex-1 px-6 py-6 max-w-7xl mx-auto w-full">
+    <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+      <!-- Loading Skeleton -->
+      <div class="animate-pulse flex flex-col gap-3">
+        <div class="h-44 bg-[#1a1a1a] rounded-xl"></div>
+        <div class="flex gap-3">
+          <div class="w-9 h-9 rounded-full bg-[#1a1a1a]"></div>
+          <div class="flex-1 space-y-2">
+            <div class="h-4 bg-[#1a1a1a] rounded w-5/6"></div>
+            <div class="h-3 bg-[#1a1a1a] rounded w-1/2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- WATCH VIDEO MODAL -->
+  <div id="watchModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-2 sm:p-4">
+    <div class="w-full max-w-5xl bg-[#121212] rounded-2xl border border-[#2a2a2a] overflow-hidden flex flex-col max-h-[95vh]">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-4 py-3 border-b border-[#222]">
+        <h3 id="playerTitle" class="font-bold text-base sm:text-lg truncate max-w-lg">Video Title</h3>
+        <button onclick="closeWatchModal()" class="text-gray-400 hover:text-white p-1 text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Player Area -->
+      <div class="bg-black flex items-center justify-center aspect-video w-full">
+        <video id="mainVideoPlayer" controls autoplay class="w-full h-full max-h-[60vh] object-contain"></video>
+      </div>
+
+      <!-- Details & Actions -->
+      <div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#222] pb-4">
+          <div class="flex items-center gap-3">
+            <img id="playerOwnerAvatar" src="https://api.dicebear.com/7.x/bottts/svg?seed=user" class="w-11 h-11 rounded-full object-cover border border-gray-700">
+            <div>
+              <p id="playerOwnerName" class="font-semibold text-sm sm:text-base">Creator Name</p>
+              <p id="playerViews" class="text-xs text-gray-400">0 views</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="likeBtn" onclick="toggleLikeCurrentVideo()" class="flex items-center gap-2 bg-[#222] hover:bg-[#333] px-4 py-2 rounded-full text-sm font-medium transition">
+              <i class="fa-regular fa-thumbs-up"></i>
+              <span id="likeText">Like</span>
+            </button>
+            <button id="subscribeBtn" onclick="toggleSubscribeCurrentChannel()" class="bg-white hover:bg-gray-200 text-black px-4 py-2 rounded-full text-sm font-semibold transition">
+              Subscribe
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p id="playerDescription" class="text-sm text-gray-300 whitespace-pre-line bg-[#181818] p-3 rounded-xl border border-[#222]"></p>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="space-y-3 pt-2">
+          <h4 class="font-semibold text-sm sm:text-base flex items-center gap-2">
+            <i class="fa-regular fa-comment text-red-500"></i>
+            <span>Comments</span>
+          </h4>
+          <div class="flex gap-2">
+            <input id="commentInput" type="text" placeholder="Add a public comment..." class="flex-1 bg-[#181818] border border-[#2c2c2c] rounded-full px-4 py-2 text-sm focus:outline-none focus:border-red-500">
+            <button onclick="postComment()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full text-sm font-medium">Post</button>
+          </div>
+          <div id="commentsList" class="space-y-3 pt-2">
+            <!-- Dynamic comments -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD VIDEO MODAL -->
+  <div id="uploadModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#181818] rounded-2xl border border-[#2c2c2c] w-full max-w-lg p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#2a2a2a] pb-3">
+        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-red-500"></i>
+          <span>Upload Video</span>
+        </h3>
+        <button onclick="closeUploadModal()" class="text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="uploadForm" onsubmit="handleVideoUpload(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Video Title *</label>
+          <input id="upTitle" type="text" required placeholder="e.g. Learn Node.js in 10 minutes" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Description</label>
+          <textarea id="upDesc" rows="2" placeholder="Tell viewers about your video..." class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</label>
+            <select id="upCategory" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500 text-gray-200">
+              <option value="Tech">Tech</option>
+              <option value="Gaming">Gaming</option>
+              <option value="Music">Music</option>
+              <option value="Education">Education</option>
+              <option value="Entertainment">Entertainment</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Tags (comma separated)</label>
+            <input id="upTags" type="text" placeholder="code, tutorial" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Video File (.mp4, .mkv, .webm) *</label>
+          <input id="upVideoFile" type="file" accept="video/*" required class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 cursor-pointer">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Thumbnail (.jpg, .png, .webp) *</label>
+          <input id="upThumbFile" type="file" accept="image/*" required class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-700 file:text-white hover:file:bg-zinc-600 cursor-pointer">
+        </div>
+
+        <div id="uploadStatus" class="hidden text-sm py-2 px-3 rounded-lg bg-zinc-800 text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-spinner fa-spin"></i>
+          <span>Uploading to Cloudinary... Please wait.</span>
+        </div>
+
+        <button id="uploadSubmitBtn" type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg transition shadow-lg shadow-red-600/30">
+          Upload Video
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- AUTH MODAL -->
+  <div id="authModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#181818] rounded-2xl border border-[#2c2c2c] w-full max-w-md p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#2a2a2a] pb-3">
+        <h3 id="authModalTitle" class="font-bold text-lg text-white">Sign In</h3>
+        <button onclick="closeAuthModal()" class="text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Email or Username</label>
+          <input id="loginIdentifier" type="text" required placeholder="manu@example.com" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Password</label>
+          <input id="loginPassword" type="password" required placeholder="••••••••" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg transition">Sign In</button>
+        <p class="text-center text-xs text-gray-400">
+          Don't have an account? <a href="#" onclick="switchAuthMode('register')" class="text-red-400 hover:underline">Register</a>
+        </p>
+      </form>
+
+      <!-- Register Form -->
+      <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Username *</label>
+          <input id="regUsername" type="text" required placeholder="coolcreator" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Full Name *</label>
+          <input id="regFullName" type="text" required placeholder="Manu Sindhu" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Email *</label>
+          <input id="regEmail" type="email" required placeholder="manu@example.com" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Password *</label>
+          <input id="regPassword" type="password" required placeholder="••••••••" class="w-full bg-[#121212] border border-[#333] rounded-lg p-2 text-sm focus:outline-none focus:border-red-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Avatar Image *</label>
+          <input id="regAvatar" type="file" accept="image/*" required class="w-full text-sm text-gray-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-red-600 file:text-white cursor-pointer">
+        </div>
+        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg transition">Create Account</button>
+        <p class="text-center text-xs text-gray-400">
+          Already have an account? <a href="#" onclick="switchAuthMode('login')" class="text-red-400 hover:underline">Sign In</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    let currentUser = null;
+    let currentVideo = null;
+    let activeCategory = '';
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadVideos();
+    });
+
+    // Check if user is logged in
+    async function checkAuth() {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        renderAuthButton();
+        return;
+      }
+      try {
+        const res = await fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentUser = data.data;
+          renderUserSection();
+        } else {
+          localStorage.removeItem('accessToken');
+          renderAuthButton();
+        }
+      } catch (e) {
+        renderAuthButton();
+      }
+    }
+
+    function renderAuthButton() {
+      document.getElementById('authSection').innerHTML = `
+        <button onclick="openAuthModal('login')" class="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-full text-sm font-medium transition shadow-md shadow-red-600/30">
+          <i class="fa-regular fa-user"></i>
+          <span>Sign In</span>
+        </button>
+      `;
+    }
+
+    function renderUserSection() {
+      document.getElementById('authSection').innerHTML = `
+        <div class="flex items-center gap-2">
+          <img src="${currentUser.avatar?.url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + currentUser.username}" class="w-9 h-9 rounded-full object-cover border border-red-500">
+          <span class="text-sm font-semibold hidden sm:inline">${currentUser.fullName || currentUser.username}</span>
+          <button onclick="handleLogout()" class="text-gray-400 hover:text-red-400 text-sm ml-1" title="Logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    async function handleLogout() {
+      const token = localStorage.getItem('accessToken');
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      localStorage.removeItem('accessToken');
+      currentUser = null;
+      renderAuthButton();
+    }
+
+    // Load Videos
+    async function loadVideos(query = '') {
+      const grid = document.getElementById('videoGrid');
+      let url = `/api/v1/videos?page=1&limit=20`;
+      if (query) url += `&query=${encodeURIComponent(query)}`;
+      if (activeCategory) url += `&category=${encodeURIComponent(activeCategory)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        const videos = data.data?.docs || [];
+
+        if (videos.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-full py-16 text-center space-y-4">
+              <div class="w-16 h-16 rounded-full bg-zinc-800 text-gray-400 flex items-center justify-center mx-auto text-2xl">
+                <i class="fa-solid fa-film"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-200">No videos found</h3>
+              <p class="text-sm text-gray-400 max-w-sm mx-auto">Be the first creator to upload a video on this platform!</p>
+              <button onclick="openUploadModal()" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-full text-sm font-semibold transition shadow-lg shadow-red-600/30">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Upload Now</span>
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        grid.innerHTML = videos.map(v => `
+          <div onclick="openWatchModal('${v._id}')" class="group cursor-pointer flex flex-col gap-2.5">
+            <div class="relative aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800">
+              <img src="${v.thumbnail?.url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600'">
+              ${v.duration ? `<span class="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-mono">${formatDuration(v.duration)}</span>` : ''}
+            </div>
+            <div class="flex gap-3">
+              <img src="${v.owner?.avatar?.url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + (v.owner?.username || 'user')}" class="w-9 h-9 rounded-full object-cover border border-zinc-700 flex-shrink-0">
+              <div class="flex-1 min-w-0">
+                <h4 class="font-semibold text-sm line-clamp-2 text-white group-hover:text-red-400 transition leading-snug">${v.title}</h4>
+                <p class="text-xs text-gray-400 mt-1 truncate">${v.owner?.fullName || v.owner?.username || 'Channel'}</p>
+                <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                  <span>${v.views || 0} views</span>
+                  <span>•</span>
+                  <span>${timeAgo(v.createdAt)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function formatDuration(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function timeAgo(dateString) {
+      const diff = Math.floor((new Date() - new Date(dateString)) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    function handleSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      loadVideos(q);
+    }
+    document.getElementById('searchInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSearch();
+    });
+
+    function filterCategory(cat) {
+      activeCategory = cat;
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        if ((cat === '' && btn.innerText === 'All') || btn.innerText === cat) {
+          btn.className = 'category-btn active px-3.5 py-1.5 rounded-lg bg-white text-black font-semibold whitespace-nowrap';
+        } else {
+          btn.className = 'category-btn px-3.5 py-1.5 rounded-lg bg-[#222] hover:bg-[#333] text-gray-300 font-medium whitespace-nowrap';
+        }
+      });
+      loadVideos();
+    }
+
+    // WATCH MODAL
+    async function openWatchModal(videoId) {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch(`/api/v1/videos/${videoId}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const data = await res.json();
+        if (!data.success) return alert(data.message || 'Error fetching video');
+
+        currentVideo = data.data;
+        document.getElementById('playerTitle').innerText = currentVideo.title;
+        document.getElementById('playerDescription').innerText = currentVideo.description || 'No description provided.';
+        document.getElementById('playerOwnerName').innerText = currentVideo.owner?.fullName || currentVideo.owner?.username;
+        document.getElementById('playerViews').innerText = `${currentVideo.views || 0} views • ${timeAgo(currentVideo.createdAt)}`;
+        document.getElementById('playerOwnerAvatar').src = currentVideo.owner?.avatar?.url || 'https://api.dicebear.com/7.x/bottts/svg?seed=user';
+
+        const videoPlayer = document.getElementById('mainVideoPlayer');
+        videoPlayer.src = currentVideo.videoFile?.url;
+        videoPlayer.play().catch(() => {});
+
+        loadComments(videoId);
+
+        document.getElementById('watchModal').classList.remove('hidden');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function closeWatchModal() {
+      const player = document.getElementById('mainVideoPlayer');
+      player.pause();
+      player.src = '';
+      document.getElementById('watchModal').classList.add('hidden');
+    }
+
+    async function toggleLikeCurrentVideo() {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return openAuthModal('login');
+      const res = await fetch(`/api/v1/likes/video/${currentVideo._id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('likeText').innerText = data.data.liked ? 'Liked' : 'Like';
+        document.getElementById('likeBtn').classList.toggle('text-red-500', data.data.liked);
+      }
+    }
+
+    async function toggleSubscribeCurrentChannel() {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return openAuthModal('login');
+      const channelId = currentVideo.owner?._id;
+      const res = await fetch(`/api/v1/subscriptions/channel/${channelId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('subscribeBtn').innerText = data.data.subscribed ? 'Subscribed' : 'Subscribe';
+        document.getElementById('subscribeBtn').classList.toggle('bg-zinc-700', data.data.subscribed);
+        document.getElementById('subscribeBtn').classList.toggle('text-white', data.data.subscribed);
+      }
+    }
+
+    async function loadComments(videoId) {
+      const list = document.getElementById('commentsList');
+      try {
+        const res = await fetch(`/api/v1/comments/${videoId}?page=1&limit=30`);
+        const data = await res.json();
+        const comments = data.data?.docs || [];
+
+        if (comments.length === 0) {
+          list.innerHTML = `<p class="text-xs text-gray-500 italic">No comments yet. Start the conversation!</p>`;
+          return;
+        }
+
+        list.innerHTML = comments.map(c => `
+          <div class="flex gap-2.5 items-start">
+            <img src="${c.owner?.avatar?.url || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + c.owner?.username}" class="w-8 h-8 rounded-full object-cover border border-zinc-700">
+            <div class="flex-1 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-gray-200">${c.owner?.fullName || c.owner?.username}</span>
+                <span class="text-gray-500 text-[10px]">${timeAgo(c.createdAt)}</span>
+              </div>
+              <p class="text-gray-300 mt-1">${c.content}</p>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function postComment() {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return openAuthModal('login');
+      const input = document.getElementById('commentInput');
+      const content = input.value.trim();
+      if (!content) return;
+
+      const res = await fetch(`/api/v1/comments/${currentVideo._id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (data.success) {
+        input.value = '';
+        loadComments(currentVideo._id);
+      }
+    }
+
+    // UPLOAD MODAL
+    function openUploadModal() {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return openAuthModal('login');
+      document.getElementById('uploadModal').classList.remove('hidden');
+    }
+
+    function closeUploadModal() {
+      document.getElementById('uploadModal').classList.add('hidden');
+    }
+
+    async function handleVideoUpload(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('accessToken');
+      if (!token) return openAuthModal('login');
+
+      const submitBtn = document.getElementById('uploadSubmitBtn');
+      const statusDiv = document.getElementById('uploadStatus');
+
+      const formData = new FormData();
+      formData.append('title', document.getElementById('upTitle').value);
+      formData.append('description', document.getElementById('upDesc').value);
+      formData.append('category', document.getElementById('upCategory').value);
+      formData.append('tags', document.getElementById('upTags').value);
+      formData.append('videoFile', document.getElementById('upVideoFile').files[0]);
+      formData.append('thumbnail', document.getElementById('upThumbFile').files[0]);
+
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-50');
+      statusDiv.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/v1/videos/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Video uploaded successfully to Cloudinary! 🎉');
+          closeUploadModal();
+          document.getElementById('uploadForm').reset();
+          loadVideos();
+        } else {
+          alert(data.message || 'Upload failed');
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50');
+        statusDiv.classList.add('hidden');
+      }
+    }
+
+    // AUTH MODAL
+    function openAuthModal(mode = 'login') {
+      switchAuthMode(mode);
+      document.getElementById('authModal').classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function switchAuthMode(mode) {
+      const isLogin = mode === 'login';
+      document.getElementById('authModalTitle').innerText = isLogin ? 'Sign In' : 'Create Account';
+      document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+      document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const identifier = document.getElementById('loginIdentifier').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      const body = { password };
+      if (identifier.includes('@')) body.email = identifier;
+      else body.username = identifier;
+
+      try {
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('accessToken', data.data.accessToken);
+          currentUser = data.data.user;
+          renderUserSection();
+          closeAuthModal();
+        } else {
+          alert(data.message || 'Login failed');
+        }
+      } catch (err) {
+        alert('Login failed: ' + err.message);
+      }
+    }
+
+    async function handleRegister(e) {
+      e.preventDefault();
+      const formData = new FormData();
+      formData.append('username', document.getElementById('regUsername').value.trim());
+      formData.append('fullName', document.getElementById('regFullName').value.trim());
+      formData.append('email', document.getElementById('regEmail').value.trim());
+      formData.append('password', document.getElementById('regPassword').value);
+      formData.append('avatar', document.getElementById('regAvatar').files[0]);
+
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Registration successful! Please login.');
+          switchAuthMode('login');
+        } else {
+          alert(data.message || 'Registration failed');
+        }
+      } catch (err) {
+        alert('Registration failed: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
