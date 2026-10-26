@@ -17,20 +17,25 @@ export const uploadVideo = asyncHandler(async (req, res) => {
   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
   if (!videoLocalPath) throw new ApiError(400, "Video file is required");
-  if (!thumbnailLocalPath) throw new ApiError(400, "Thumbnail is required");
 
-  // Upload both to Cloudinary
-  const [videoFile, thumbnail] = await Promise.all([
-    uploadOnCloudinary(videoLocalPath, "video"),
-    uploadOnCloudinary(thumbnailLocalPath, "image"),
-  ]);
-
+  // Upload video to Cloudinary
+  const videoFile = await uploadOnCloudinary(videoLocalPath, "video");
   if (!videoFile) throw new ApiError(500, "Error uploading video");
-  if (!thumbnail) throw new ApiError(500, "Error uploading thumbnail");
+
+  // Upload custom thumbnail if provided, otherwise auto-generate from video frame
+  let thumbnail = null;
+  if (thumbnailLocalPath) {
+    thumbnail = await uploadOnCloudinary(thumbnailLocalPath, "image");
+  }
+
+  const thumbnailUrl = thumbnail
+    ? thumbnail.secure_url
+    : videoFile.secure_url.replace(/\.[^/.]+$/, ".jpg");
+  const thumbnailPublicId = thumbnail ? thumbnail.public_id : "";
 
   const video = await Video.create({
     videoFile: { url: videoFile.secure_url, public_id: videoFile.public_id },
-    thumbnail: { url: thumbnail.secure_url, public_id: thumbnail.public_id },
+    thumbnail: { url: thumbnailUrl, public_id: thumbnailPublicId },
     title,
     description: description || "",
     duration: videoFile.duration || 0,
@@ -200,10 +205,11 @@ export const deleteVideo = asyncHandler(async (req, res) => {
   }
 
   // Delete from Cloudinary
-  await Promise.all([
-    deleteFromCloudinary(video.videoFile.public_id, "video"),
-    deleteFromCloudinary(video.thumbnail.public_id, "image"),
-  ]);
+  const deletePromises = [deleteFromCloudinary(video.videoFile.public_id, "video")];
+  if (video.thumbnail?.public_id) {
+    deletePromises.push(deleteFromCloudinary(video.thumbnail.public_id, "image"));
+  }
+  await Promise.all(deletePromises);
 
   await Video.findByIdAndDelete(videoId);
 

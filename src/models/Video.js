@@ -8,8 +8,8 @@ const videoSchema = new Schema(
       public_id: { type: String, required: true },
     },
     thumbnail: {
-      url: { type: String, required: true },
-      public_id: { type: String, required: true },
+      url: { type: String, default: "" },
+      public_id: { type: String, default: "" },
     },
     title: {
       type: String,

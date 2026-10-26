@@ -196,8 +196,8 @@
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Thumbnail (.jpg, .png, .webp) *</label>
-          <input id="upThumbFile" type="file" accept="image/*" required class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-700 file:text-white hover:file:bg-zinc-600 cursor-pointer">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Thumbnail (.jpg, .png, .webp) <span class="text-zinc-500 font-normal lowercase">(optional - auto generated if blank)</span></label>
+          <input id="upThumbFile" type="file" accept="image/*" class="w-full text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-zinc-700 file:text-white hover:file:bg-zinc-600 cursor-pointer">
         </div>
 
         <div id="uploadStatus" class="hidden text-sm py-2 px-3 rounded-lg bg-zinc-800 text-amber-300 flex items-center gap-2">
@@ -609,7 +609,11 @@
       formData.append('category', document.getElementById('upCategory').value);
       formData.append('tags', document.getElementById('upTags').value);
       formData.append('videoFile', document.getElementById('upVideoFile').files[0]);
-      formData.append('thumbnail', document.getElementById('upThumbFile').files[0]);
+      
+      const thumbFile = document.getElementById('upThumbFile').files[0];
+      if (thumbFile) {
+        formData.append('thumbnail', thumbFile);
+      }
 
       submitBtn.disabled = true;
       submitBtn.classList.add('opacity-50');
