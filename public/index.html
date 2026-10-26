@@ -24,6 +24,9 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none"></div>
+
   <!-- NAVBAR -->
   <header class="sticky top-0 z-40 bg-[#0f0f0f]/95 backdrop-blur border-b border-[#222] px-4 py-2.5 flex items-center justify-between gap-4">
     <div class="flex items-center gap-3">
@@ -271,6 +274,47 @@
     let currentVideo = null;
     let activeCategory = '';
 
+    // Beautiful in-app Toast Notification system
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const icons = {
+        success: 'fa-solid fa-circle-check text-emerald-400',
+        error: 'fa-solid fa-circle-exclamation text-rose-400',
+        info: 'fa-solid fa-circle-info text-blue-400'
+      };
+
+      const borders = {
+        success: 'border-emerald-500/30 bg-[#16201b]',
+        error: 'border-rose-500/30 bg-[#241618]',
+        info: 'border-blue-500/30 bg-[#161a24]'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-white text-sm transition-all duration-300 transform translate-x-10 opacity-0 ${borders[type] || borders.success}`;
+      toast.innerHTML = `
+        <i class="${icons[type] || icons.success} text-base flex-shrink-0"></i>
+        <span class="flex-1 font-medium leading-snug">${message}</span>
+        <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white ml-2 text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      `;
+
+      container.appendChild(toast);
+
+      // Trigger animation
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-x-10', 'opacity-0');
+        toast.classList.add('translate-x-0', 'opacity-100');
+      });
+
+      // Auto remove after 3.5s
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-6');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       checkAuth();
@@ -331,6 +375,7 @@
       localStorage.removeItem('accessToken');
       currentUser = null;
       renderAuthButton();
+      showToast('Logged out successfully', 'info');
     }
 
     // Load Videos
@@ -430,7 +475,7 @@
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         const data = await res.json();
-        if (!data.success) return alert(data.message || 'Error fetching video');
+        if (!data.success) return showToast(data.message || 'Error fetching video', 'error');
 
         currentVideo = data.data;
         document.getElementById('playerTitle').innerText = currentVideo.title;
@@ -578,15 +623,15 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert('Video uploaded successfully to Cloudinary! 🎉');
           closeUploadModal();
           document.getElementById('uploadForm').reset();
+          showToast('Video uploaded and published! 🚀', 'success');
           loadVideos();
         } else {
-          alert(data.message || 'Upload failed');
+          showToast(data.message || 'Upload failed', 'error');
         }
       } catch (err) {
-        alert('Upload failed: ' + err.message);
+        showToast('Upload failed: ' + err.message, 'error');
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('opacity-50');
@@ -632,21 +677,25 @@
           currentUser = data.data.user;
           renderUserSection();
           closeAuthModal();
+          showToast(`Welcome back, ${currentUser.fullName || currentUser.username}! 👋`, 'success');
+          loadVideos();
         } else {
-          alert(data.message || 'Login failed');
+          showToast(data.message || 'Login failed. Invalid credentials.', 'error');
         }
       } catch (err) {
-        alert('Login failed: ' + err.message);
+        showToast('Login failed: ' + err.message, 'error');
       }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
       const formData = new FormData();
       formData.append('username', document.getElementById('regUsername').value.trim());
       formData.append('fullName', document.getElementById('regFullName').value.trim());
-      formData.append('email', document.getElementById('regEmail').value.trim());
-      formData.append('password', document.getElementById('regPassword').value);
+      formData.append('email', email);
+      formData.append('password', password);
       formData.append('avatar', document.getElementById('regAvatar').files[0]);
 
       try {
@@ -656,13 +705,33 @@
         });
         const data = await res.json();
         if (data.success) {
-          alert('Registration successful! Please login.');
-          switchAuthMode('login');
+          showToast('Account created successfully! Logging you in...', 'success');
+          // Automatic login right after registration!
+          try {
+            const loginRes = await fetch('/api/v1/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, password })
+            });
+            const loginData = await loginRes.json();
+            if (loginData.success) {
+              localStorage.setItem('accessToken', loginData.data.accessToken);
+              currentUser = loginData.data.user;
+              renderUserSection();
+              closeAuthModal();
+              showToast(`Welcome to StreamHub, ${currentUser.fullName || currentUser.username}! 🎉`, 'success');
+              loadVideos();
+            } else {
+              switchAuthMode('login');
+            }
+          } catch (loginErr) {
+            switchAuthMode('login');
+          }
         } else {
-          alert(data.message || 'Registration failed');
+          showToast(data.message || 'Registration failed', 'error');
         }
       } catch (err) {
-        alert('Registration failed: ' + err.message);
+        showToast('Registration failed: ' + err.message, 'error');
       }
     }
   </script>
