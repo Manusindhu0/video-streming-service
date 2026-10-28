@@ -37,4 +37,14 @@ const deleteFromCloudinary = async (publicId, resourceType = "image") => {
   }
 };
 
-export { uploadOnCloudinary, deleteFromCloudinary };
+const cleanupTempFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      console.error("Error removing temp file:", err);
+    }
+  }
+};
+
+export { uploadOnCloudinary, deleteFromCloudinary, cleanupTempFile };

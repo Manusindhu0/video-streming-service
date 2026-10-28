@@ -3,7 +3,7 @@ import { User } from "../models/User.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinaryUpload.js";
+import { uploadOnCloudinary, deleteFromCloudinary, cleanupTempFile } from "../utils/cloudinaryUpload.js";
 
 const cookieOptions = {
   httpOnly: true,
@@ -23,18 +23,21 @@ const generateTokens = async (userId) => {
 // POST /api/v1/auth/register
 export const register = asyncHandler(async (req, res) => {
   const { username, email, fullName, password } = req.body;
+  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  const coverLocalPath = req.files?.coverImage?.[0]?.path;
 
   if ([username, email, fullName, password].some((f) => !f?.trim())) {
+    cleanupTempFile(avatarLocalPath);
+    cleanupTempFile(coverLocalPath);
     throw new ApiError(400, "All fields are required");
   }
 
   const existingUser = await User.findOne({ $or: [{ username }, { email }] });
   if (existingUser) {
+    cleanupTempFile(avatarLocalPath);
+    cleanupTempFile(coverLocalPath);
     throw new ApiError(409, "User with this email or username already exists");
   }
-
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
-  const coverLocalPath = req.files?.coverImage?.[0]?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar is required");

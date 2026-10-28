@@ -4,19 +4,25 @@ import { User } from "../models/User.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinaryUpload.js";
+import { uploadOnCloudinary, deleteFromCloudinary, cleanupTempFile } from "../utils/cloudinaryUpload.js";
 import { videoQueue } from "../jobs/videoQueue.js";
 
 // POST /api/v1/videos/upload
 export const uploadVideo = asyncHandler(async (req, res) => {
   const { title, description, tags, category } = req.body;
-
-  if (!title?.trim()) throw new ApiError(400, "Title is required");
-
   const videoLocalPath = req.files?.videoFile?.[0]?.path;
   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
-  if (!videoLocalPath) throw new ApiError(400, "Video file is required");
+  if (!title?.trim()) {
+    cleanupTempFile(videoLocalPath);
+    cleanupTempFile(thumbnailLocalPath);
+    throw new ApiError(400, "Title is required");
+  }
+
+  if (!videoLocalPath) {
+    cleanupTempFile(thumbnailLocalPath);
+    throw new ApiError(400, "Video file is required");
+  }
 
   // Upload video to Cloudinary
   const videoFile = await uploadOnCloudinary(videoLocalPath, "video");
